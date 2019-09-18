@@ -1,15 +1,9 @@
 using BinaryProvider
 
-function get_binaries(filename)
+function get_binaries(filename,a="x86_64",b="linux",c="gnu",d="",e="gcc5",f="cxx11")
 	regex_binprefix = r"bin_prefix ?=.*\n"
 	prefix=abspath(joinpath(dirname(filename),"usr"))
 	mkpath(prefix)
-	a="x86_64"
-	b="linux"
-	c="gnu"
-	d=""
-	e="gcc5"
-	f="cxx11"
 	filename = ARGS[1]
 	file = open(filename)
 	str = read(file,String)
