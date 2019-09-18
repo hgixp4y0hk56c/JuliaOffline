@@ -151,6 +151,9 @@ function main(path_to_project,path_to_external)
     write_env(ctx) # write env before building
 end
 
-path_to_project = ARGS[1]
-path_to_external = ARGS[2]
+path_to_project = abspath(ARGS[1])
+ispath(path_to_project) || error("First argument must be the existent path of your project")
+path_to_external = abspath(ARGS[2])
+ispath(path_to_external) || mkpath(path_to_external)
+path_to_external == path_to_project && error("Both paths cannot be equal")
 main(path_to_project,path_to_external)
