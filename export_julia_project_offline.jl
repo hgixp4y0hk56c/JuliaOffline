@@ -1,9 +1,9 @@
+import Pkg
 import Pkg.Types
 import Pkg.Types:Context,PackageSpec,project_deps_resolve!,registry_resolve!,stdlib_resolve!,ensure_resolved,manifest_info,pkgerror,printpkgstyle,is_stdlib,write_env,projectfile_path
 import Pkg:activate
 import Pkg.Operations
 import Pkg.Operations:source_path,download_source,load_urls,is_dep,update_package_add,load_direct_deps!,check_registered,resolve_versions!,update_manifest!,tracking_registered_version,install_archive,install_git,set_readonly,find_installed,gen_build_code,build_versions,dependency_order_uuids,buildfile,project_rel_path,backwards_compat_for_build,sandbox,testdir,builddir
-import Pkg.BinaryProvider
 import Pkg:depots1
 using UUIDs
 import LibGit2
@@ -25,7 +25,7 @@ end
 
 function download_source(ctx::Context, pkgs::Vector{PackageSpec},
                         urls::Dict{UUID, Vector{String}},path_to_external; readonly=true)
-    BinaryProvider.probe_platform_engines!()
+    Pkg.BinaryProvider.probe_platform_engines!()
     new_versions = UUID[]
 
     pkgs_to_install = Tuple{PackageSpec, String}[]
@@ -147,8 +147,33 @@ function main(path_to_project,path_to_external)
     resolve_versions!(ctx, pkgs)
     update_manifest!(ctx, pkgs)
 
-    new_apply = download_source(ctx, pkgs,path_to_external;readonly=false)
+    uuids = download_source(ctx, pkgs,path_to_external;readonly=false)
     write_env(ctx) # write env before building
+
+    ctx.preview && (printpkgstyle(ctx, :Building, "skipping building in preview mode"); return)
+    builds = Tuple{String,String}[]
+    for uuid in uuids
+        uuid in keys(ctx.stdlibs) && continue
+        if Types.is_project_uuid(ctx.env, uuid)
+            path = dirname(ctx.env.project_file)
+            name = ctx.env.pkg.name
+            version = ctx.env.pkg.version
+        else
+            entry = manifest_info(ctx.env, uuid)
+            name = entry.name
+            if entry.tree_hash !== nothing
+                path = join_external_source(path_to_external,find_installed(name, uuid, entry.tree_hash))
+            elseif entry.path !== nothing
+                path = project_rel_path(ctx, entry.path)
+            else
+                pkgerror("Could not find either `git-tree-sha1` or `path` for package $name")
+            end
+            version = v"0.0"
+        end
+        ispath(path) || error("Build path for $name does not exist: $path")
+        ispath(buildfile(path)) && push!(builds, (name, buildfile(path)))
+    end
+    return builds
 end
 
 path_to_project = abspath(ARGS[1])
@@ -156,4 +181,8 @@ ispath(path_to_project) || error("First argument must be the existent path of yo
 path_to_external = abspath(ARGS[2])
 ispath(path_to_external) || mkpath(path_to_external)
 path_to_external == path_to_project && error("Both paths cannot be equal")
-main(path_to_project,path_to_external)
+builds=main(path_to_project,path_to_external)
+
+file = open("to_build.txt","w")
+foreach( b  -> write(file,b[2]*'\n'),builds)
+close(file)
