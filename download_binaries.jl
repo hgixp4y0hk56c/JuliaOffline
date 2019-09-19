@@ -3,7 +3,8 @@ using BinaryProvider
 filename = ARGS[1]
 regex_binprefix = r"bin_prefix ?=.*\n"
 prefix=abspath(joinpath(dirname(filename),"usr"))
-mkpath(prefix)
+mkpath(prefix) 
+# NOTES : it should be easier to directly match the 'download_info' dictionnary, Meta.parse + eval it, and use a platform_key_abi(str_machine) to directly get (url,hash)
 a="x86_64"
 b="linux"
 c="gnu"
