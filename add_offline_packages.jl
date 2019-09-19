@@ -4,8 +4,8 @@ import Pkg.Operations:build_versions
 
 function add_local_packages(pkgs_path,project_path)
 	files=Set(readdir(pkgs_path))
-	Base.cp(joinpath(pkgs_path,pop!(files,"Manifest.toml")),project_path,force=true)
-	Base.cp(joinpath(pkgs_path,pop!(files,"Project.toml")),project_path,force=true)
+	pop!(files,"Manifest.toml")
+	pop!(files,"Project.toml")
     activate(project_path)
     ctx=Context()
     uuids_to_build=collect(keys(ctx.env.manifest))
@@ -27,6 +27,6 @@ function add_local_packages(pkgs_path,project_path)
     build_versions(ctx,uuids_to_build)
 end
 
-project_path = ARGS[1]
-pkgs_path= ARGS[2]
+project_path = abspath(ARGS[1])
+pkgs_path= abspath(ARGS[2])
 add_local_packages(pkgs_path,project_path)
